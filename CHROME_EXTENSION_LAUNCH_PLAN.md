@@ -4,6 +4,14 @@
 
 現在の「Google Meet Comment Flow」(ID: `nfhfbmbjgdkblicdmdplioanaochdhih`) と同じ機能を持つ拡張機能を、別アプリとして Chrome Web Store に新規公開する。
 
+### 新規公開の理由
+
+既存の拡張機能は別の開発者アカウントで公開されているため、既存アイテムの更新ができない。そのため、新しい開発者アカウントで別アプリとして新規公開する。
+
+### 新しい拡張機能名
+
+**Comment Stream for Meet**
+
 ---
 
 ## Phase 1: Chrome Web Store 開発者アカウントの準備
@@ -28,15 +36,9 @@
 
 ## Phase 2: 拡張機能のブランディング変更
 
-### 2.1 新しい名前の決定
-現在の名前「Google Meet Comment Flow」から変更が必要。候補例:
+### 2.1 拡張機能名
 
-| 候補名 | メリット | 注意点 |
-|--------|---------|--------|
-| Meet Comment Stream | シンプル、分かりやすい | "Google" の商標を避けられる |
-| NicoFlow for Meet | ニコニコ風を連想 | ニッチだが印象的 |
-| Comment Flow for Meet | 汎用的 | 元の名前に近い |
-| MeetFlow | 短く覚えやすい | 抽象的 |
+**Comment Stream for Meet** に決定済み。
 
 > **注意**: Google の商標ポリシーにより、拡張機能名に「Google」を含めると審査でリジェクトされる可能性がある。「Meet」のみの使用は一般的に許容される。
 
@@ -62,7 +64,7 @@
 ```typescript
 const manifest = defineManifest({
   manifest_version: 3,
-  name: "新しい拡張機能名",        // ← 変更
+  name: "Comment Stream for Meet",  // ← 変更
   version: "1.0.0",               // ← リセット
   description: "短い説明文をここに", // ← 追加
   permissions: ["storage", "scripting"],
@@ -97,7 +99,7 @@ const manifest = defineManifest({
 ```
 
 **主な変更点:**
-- `name`: 新しい名前に変更
+- `name`: `"Comment Stream for Meet"` に変更
 - `version`: `1.0.0` にリセット
 - `description`: 追加（ストア表示に使用）
 - `host_permissions`: `http://*/*`, `https://*/*` → `https://meet.google.com/*` に限定（審査通過のため推奨）
@@ -107,14 +109,14 @@ const manifest = defineManifest({
 ### 3.2 `src/popup/App.tsx` - ヘッダー変更
 
 ```tsx
-<header>新しい拡張機能名</header>
+<header>Comment Stream for Meet</header>
 ```
 
 ### 3.3 `package.json` - 名前更新
 
 ```json
 {
-  "name": "新しいパッケージ名",
+  "name": "comment-stream-for-meet",
   ...
 }
 ```
@@ -122,7 +124,7 @@ const manifest = defineManifest({
 ### 3.4 `index.html` - タイトル変更
 
 ```html
-<title>新しい拡張機能名</title>
+<title>Comment Stream for Meet</title>
 ```
 
 ---
@@ -179,7 +181,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4        # ← 追加（Node.js バージョン固定推奨）
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Build
         run: |
