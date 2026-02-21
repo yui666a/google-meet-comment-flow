@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 
 const Colors = {
   Black: "black",
@@ -28,7 +28,7 @@ const App = () => {
     return Object.values(Colors).some((color) => color === value);
   };
 
-  const handleChangeColor = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChangeColor = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     if (!isColor(value)) return;
 
@@ -43,7 +43,7 @@ const App = () => {
     return Object.values(FontSizes).some((fontSize) => fontSize === value);
   };
 
-  const handleChangeFontSize = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChangeFontSize = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     if (!isFontSize(value)) return;
 
