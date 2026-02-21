@@ -4,26 +4,24 @@ let prevThread: Node;
 
 let prevPopupThread: Node;
 
-const CHAT_SELECTOR_BASE =
-  "#ow3 > div.T4LgNb > div > div[jsmodel='BA3Upd'] > div.crqnQb > div.R3Gmyc.qwU8Me > div:nth-child(2) > div.WUFI9b";
+const CHAT_SELECTOR_BASE = "div.WUFI9b[data-panel-id='2']";
 
 const CHAT_SELECTOR_OBJ = {
   container: CHAT_SELECTOR_BASE,
-  thread: `${CHAT_SELECTOR_BASE} > div.hWX4r > div >div.hwhNhe >  div.z38b6`,
-  message: `${CHAT_SELECTOR_BASE} > div.hWX4r > div >div.hwhNhe > div.z38b6 > div > div.Zmm6We > div`,
+  thread: `${CHAT_SELECTOR_BASE} > div.hWX4r div.z38b6`,
+  message: `${CHAT_SELECTOR_BASE} > div.hWX4r div.z38b6 div[jsname="dTKtvb"] > div`,
 } as const;
 
 const CHAT_CLASS_OBJ = {
   isHidden: "qdulke",
 } as const;
 
-const POPUP_SELECTOR_BASE =
-  "#ow3 > div.T4LgNb > div > div[jsmodel='BA3Upd'] > div.crqnQb > div.fJsklc.nulMpf.Didmac.sOkDId";
+const POPUP_SELECTOR_BASE = "div.fJsklc.nulMpf.Didmac.sOkDId";
 
 const POPUP_SELECTOR_OBJ = {
   container: POPUP_SELECTOR_BASE,
   thread: `${POPUP_SELECTOR_BASE} > div.mIw6Bf.nTlZFe.P9KVBf`,
-  message: `${POPUP_SELECTOR_BASE} > div.mIw6Bf.nTlZFe.P9KVBf > div.BQRwGe > div > div > button > div.ZuRxkd > div > div > div.LpG93b.xtO4Tc`,
+  message: `${POPUP_SELECTOR_BASE} > div.mIw6Bf.nTlZFe.P9KVBf div[jsname="dTKtvb"] > div`,
 } as const;
 
 const extractMessageFromPopupThread = (
@@ -72,13 +70,16 @@ const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
 
     const popupThread = document.querySelector(POPUP_SELECTOR_OBJ.thread);
 
-    const container = document.querySelector(CHAT_SELECTOR_OBJ.container);
+    const chatPanel = document.querySelector(CHAT_SELECTOR_OBJ.container);
+    const chatPanelAside = chatPanel?.closest("aside.R3Gmyc");
+    const isChatVisible =
+      chatPanelAside &&
+      !chatPanelAside.classList.contains(CHAT_CLASS_OBJ.isHidden);
     const thread = document.querySelector(CHAT_SELECTOR_OBJ.thread);
 
-    const message =
-      container && !container.classList.contains(CHAT_CLASS_OBJ.isHidden)
-        ? extractMessageFromThread(thread)
-        : extractMessageFromPopupThread(popupThread);
+    const message = isChatVisible
+      ? extractMessageFromThread(thread)
+      : extractMessageFromPopupThread(popupThread);
 
     if (!message) return;
 
