@@ -108,7 +108,7 @@ const App = () => {
 
   return (
     <div className="container">
-      <header>Google Meet Comment Flow</header>
+      <header>Comment Stream for Meet</header>
       <main>
         <div className="form-group">
           <label htmlFor="comment-color">Color</label>

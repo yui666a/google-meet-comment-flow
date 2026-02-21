@@ -1,4 +1,4 @@
-# Google Meet Comment Flow
+# Comment Stream for Meet
 
 ## 👀 Features
 
