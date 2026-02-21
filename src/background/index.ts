@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           chrome.scripting.executeScript({
             target: { tabId: tabs[0].id },
             func: injectComment,
-            args: [res[StorageKeys.Comment]],
+            args: [res[StorageKeys.Comment] as string],
           });
         });
       });
