@@ -58,6 +58,11 @@ const extractMessageFromThread = (
 
 const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
   try {
+    if (!chrome.runtime?.id) {
+      observer.disconnect();
+      return;
+    }
+
     const addedNode = mutations[0].addedNodes?.[0];
 
     if (addedNode?.nodeType !== Node.ELEMENT_NODE) return;
