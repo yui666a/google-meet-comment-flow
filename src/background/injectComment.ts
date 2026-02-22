@@ -91,12 +91,17 @@ export const injectComment = async (message: string, author?: string) => {
   comment.style["whiteSpace"] = "nowrap";
   comment.style["lineHeight"] = "initial";
 
+  // 一定速度 (px/sec) で流す。移動距離 = 画面幅 + テキスト幅
+  const SPEED_PX_PER_SEC = 400;
+  const travelDistance = screenWidth + comment.offsetWidth;
+  const duration = (travelDistance / SPEED_PX_PER_SEC) * 1000;
+
   const streamCommentUI = comment.animate(
     {
       left: `${-comment.offsetWidth}px`,
     },
     {
-      duration: 6000,
+      duration,
       easing: "linear",
     }
   );
