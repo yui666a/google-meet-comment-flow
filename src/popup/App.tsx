@@ -2,157 +2,162 @@ import "./App.css";
 import { type ChangeEvent, useEffect, useState } from "react";
 
 const Colors = {
-  Auto: "auto",
-  Black: "black",
-  Red: "red",
-  Orange: "orange",
-  Yellow: "yellow",
-  Green: "green",
-  Blue: "blue",
-  Indigo: "indigo",
-  Purple: "purple",
+	Auto: "auto",
+	Black: "black",
+	Red: "red",
+	Orange: "orange",
+	Yellow: "yellow",
+	Green: "green",
+	Blue: "blue",
+	Indigo: "indigo",
+	Purple: "purple",
 } as const;
 
-type Color = typeof Colors[keyof typeof Colors];
+type Color = (typeof Colors)[keyof typeof Colors];
 
 const FontSizes = { Xs: "XS", S: "S", M: "M", L: "L", Xl: "XL" } as const;
 
-type FontSize = typeof FontSizes[keyof typeof FontSizes];
+type FontSize = (typeof FontSizes)[keyof typeof FontSizes];
+
+const isColor = (value: string): value is Color => {
+	return Object.values(Colors).some((color) => color === value);
+};
+
+const isFontSize = (value: string): value is FontSize => {
+	return Object.values(FontSizes).some((fontSize) => fontSize === value);
+};
 
 const App = () => {
-  const [color, setColor] = useState<Color>(Colors.Auto);
+	const [color, setColor] = useState<Color>(Colors.Auto);
 
-  const [fontSize, setFontSize] = useState<FontSize>(FontSizes.L);
-  const [isEnabledStreaming, setIsEnabledStreaming] = useState<boolean>(false);
+	const [fontSize, setFontSize] = useState<FontSize>(FontSizes.L);
+	const [isEnabledStreaming, setIsEnabledStreaming] = useState<boolean>(false);
 
-  const isColor = (value: string): value is Color => {
-    return Object.values(Colors).some((color) => color === value);
-  };
+	const handleChangeColor = (e: ChangeEvent<HTMLSelectElement>) => {
+		const value = e.target.value;
+		if (!isColor(value)) return;
 
-  const handleChangeColor = (e: ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (!isColor(value)) return;
+		setColor(value);
+		chrome.runtime.sendMessage({
+			method: "setColor",
+			value,
+		});
+	};
 
-    setColor(value);
-    chrome.runtime.sendMessage({
-      method: "setColor",
-      value,
-    });
-  };
+	const handleChangeFontSize = (e: ChangeEvent<HTMLSelectElement>) => {
+		const value = e.target.value;
+		if (!isFontSize(value)) return;
 
-  const isFontSize = (value: string): value is FontSize => {
-    return Object.values(FontSizes).some((fontSize) => fontSize === value);
-  };
+		setFontSize(value);
+		chrome.runtime.sendMessage({
+			method: "setFontSize",
+			value,
+		});
+	};
 
-  const handleChangeFontSize = (e: ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (!isFontSize(value)) return;
+	const handleChangeIsEnabledStreaming = () => {
+		const value = !isEnabledStreaming;
 
-    setFontSize(value);
-    chrome.runtime.sendMessage({
-      method: "setFontSize",
-      value,
-    });
-  };
+		setIsEnabledStreaming(value);
+		chrome.runtime.sendMessage({
+			method: "setIsEnabledStreaming",
+			value,
+		});
+	};
 
-  const handleChangeIsEnabledStreaming = () => {
-    const value = !isEnabledStreaming;
+	useEffect(() => {
+		const setDataFromLocalStorage = async () => {
+			try {
+				const storedColorMessage = chrome.runtime.sendMessage({
+					method: "getColor",
+				});
+				const storedFontSizeMessage = chrome.runtime.sendMessage({
+					method: "getFontSize",
+				});
+				const storedIsEnabledStreamingMessage = chrome.runtime.sendMessage({
+					method: "getIsEnabledStreaming",
+				});
 
-    setIsEnabledStreaming(value);
-    chrome.runtime.sendMessage({
-      method: "setIsEnabledStreaming",
-      value,
-    });
-  };
+				const fetchedData = await Promise.all([
+					storedColorMessage,
+					storedFontSizeMessage,
+					storedIsEnabledStreamingMessage,
+				]);
 
-  useEffect(() => {
-    const setDataFromLocalStorage = async () => {
-      try {
-        const storedColorMessage = chrome.runtime.sendMessage({
-          method: "getColor",
-        });
-        const storedFontSizeMessage = chrome.runtime.sendMessage({
-          method: "getFontSize",
-        });
-        const storedIsEnabledStreamingMessage = chrome.runtime.sendMessage({
-          method: "getIsEnabledStreaming",
-        });
+				const storedColor = fetchedData[0];
+				const storedFontSize = fetchedData[1];
+				const storedIsEnabledStreaming = fetchedData[2];
 
-        const fetchedData = await Promise.all([
-          storedColorMessage,
-          storedFontSizeMessage,
-          storedIsEnabledStreamingMessage,
-        ]);
+				if (storedColor && isColor(storedColor)) {
+					setColor(storedColor);
+				}
 
-        const storedColor = fetchedData[0];
-        const storedFontSize = fetchedData[1];
-        const storedIsEnabledStreaming = fetchedData[2];
+				if (storedFontSize && isFontSize(storedFontSize)) {
+					setFontSize(storedFontSize);
+				}
 
-        if (storedColor && isColor(storedColor)) {
-          setColor(storedColor);
-        }
+				if (typeof storedIsEnabledStreaming === "boolean") {
+					setIsEnabledStreaming(storedIsEnabledStreaming);
+				}
+			} catch (e) {
+				console.error(e);
+			}
+		};
 
-        if (storedFontSize && isFontSize(storedFontSize)) {
-          setFontSize(storedFontSize);
-        }
+		setDataFromLocalStorage();
+	}, []);
 
-        if (typeof storedIsEnabledStreaming === "boolean") {
-          setIsEnabledStreaming(storedIsEnabledStreaming);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    setDataFromLocalStorage();
-  }, []);
-
-  return (
-    <div className="container">
-      <header>Comment Stream for Meet</header>
-      <main>
-        <div className="form-group">
-          <label htmlFor="comment-color">Color</label>
-          <select
-            name="comment-color"
-            id="comment-color"
-            value={color}
-            onChange={handleChangeColor}
-          >
-            {Object.values(Colors).map((color) => (
-              <option value={color}>{color}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="comment-font-size">Font Size</label>
-          <select
-            name="comment-font-size"
-            id="comment-font-size"
-            value={fontSize}
-            onChange={handleChangeFontSize}
-          >
-            {Object.values(FontSizes).map((fontSize) => (
-              <option value={fontSize}>{fontSize}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="comment-enable-streaming">Enable Streaming</label>
-          <div id="comment-enable-streaming" className="toggle-btn">
-            <input
-              id="toggle"
-              className="toggle-input"
-              type="checkbox"
-              checked={isEnabledStreaming}
-              onChange={handleChangeIsEnabledStreaming}
-            />
-            <label htmlFor="toggle" className="toggle-label" />
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+	return (
+		<div className="container">
+			<header>Comment Stream for Meet</header>
+			<main>
+				<div className="form-group">
+					<label htmlFor="comment-color">Color</label>
+					<select
+						name="comment-color"
+						id="comment-color"
+						value={color}
+						onChange={handleChangeColor}
+					>
+						{Object.values(Colors).map((color) => (
+							<option key={color} value={color}>
+								{color}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className="form-group">
+					<label htmlFor="comment-font-size">Font Size</label>
+					<select
+						name="comment-font-size"
+						id="comment-font-size"
+						value={fontSize}
+						onChange={handleChangeFontSize}
+					>
+						{Object.values(FontSizes).map((fontSize) => (
+							<option key={fontSize} value={fontSize}>
+								{fontSize}
+							</option>
+						))}
+					</select>
+				</div>
+				<div className="form-group">
+					<label htmlFor="comment-enable-streaming">Enable Streaming</label>
+					<div id="comment-enable-streaming" className="toggle-btn">
+						<input
+							id="toggle"
+							className="toggle-input"
+							type="checkbox"
+							checked={isEnabledStreaming}
+							onChange={handleChangeIsEnabledStreaming}
+						/>
+						{/* biome-ignore lint/a11y/noLabelWithoutControl: CSS toggle label paired with input via htmlFor */}
+						<label htmlFor="toggle" className="toggle-label" />
+					</div>
+				</div>
+			</main>
+		</div>
+	);
 };
 
 export default App;

@@ -14,7 +14,10 @@ Chrome Extension (Manifest V3) that displays Google Meet chat messages as flowin
 - `npm run dev` — Start Vite dev server with hot reload (popup UI only; full extension testing requires Chrome)
 - `npm run build` — TypeScript type-check (`tsc`) + Vite production build to `dist/`
 - `npm run preview` — Preview production build locally
-- No linter, formatter, or test runner is configured
+- `npm run lint` — Biome による lint チェック
+- `npm run format` — Biome によるフォーマットチェック
+- `npm run check` — lint + format の一括チェック
+- `npm run check:fix` — lint + format の一括自動修正
 
 **Manual extension testing:** `npm run build`, then load `dist/` in Chrome via `chrome://extensions` (Developer Mode) and test on https://meet.google.com/.
 
@@ -45,4 +48,5 @@ src/
 
 ## CI/CD
 
-GitHub Actions workflow (`.github/workflows/deploy-to-store.yml`) builds and publishes to Chrome Web Store on `v*.*.*` tags.
+- **CI** (`.github/workflows/ci.yml`): `main` ブランチへの push / PR で Biome check + build を実行
+- **Deploy** (`.github/workflows/deploy-to-store.yml`): `v*.*.*` タグで Chrome Web Store へ publish
