@@ -2,6 +2,7 @@ import "./App.css";
 import { type ChangeEvent, useEffect, useState } from "react";
 
 const Colors = {
+  Auto: "auto",
   Black: "black",
   Red: "red",
   Orange: "orange",
@@ -19,7 +20,7 @@ const FontSizes = { Xs: "XS", S: "S", M: "M", L: "L", Xl: "XL" } as const;
 type FontSize = typeof FontSizes[keyof typeof FontSizes];
 
 const App = () => {
-  const [color, setColor] = useState<Color>(Colors.Green);
+  const [color, setColor] = useState<Color>(Colors.Auto);
 
   const [fontSize, setFontSize] = useState<FontSize>(FontSizes.L);
   const [isEnabledStreaming, setIsEnabledStreaming] = useState<boolean>(false);
