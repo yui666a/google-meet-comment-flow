@@ -48,9 +48,41 @@ export const injectComment = async (message: string, author?: string) => {
 
   const footerHeight = 88;
   const scrollTopHeight = window.pageYOffset;
-  const topPosition =
-    scrollTopHeight +
-    Math.floor((screenHeight - letterSize - footerHeight) * Math.random());
+  const availableHeight = screenHeight - footerHeight;
+
+  // レーン計算
+  const laneGap = letterSize * 0.2;
+  const laneHeight = letterSize + laneGap;
+  const laneCount = Math.max(1, Math.floor(availableHeight / laneHeight));
+
+  // DOM 上の既存コメント要素から占有中のレーンを取得
+  const occupiedLanes = new Set(
+    Array.from(
+      document.querySelectorAll(".google-meet-comment-flow[data-lane]")
+    ).map((el) => Number(el.getAttribute("data-lane")))
+  );
+
+  // 空きレーンからランダムに選択
+  const freeLanes = Array.from({ length: laneCount }, (_, i) => i).filter(
+    (i) => !occupiedLanes.has(i)
+  );
+
+  let topPosition: number;
+  let selectedLane: number | null = null;
+
+  if (freeLanes.length > 0) {
+    selectedLane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+    topPosition = scrollTopHeight + selectedLane * laneHeight;
+  } else {
+    // 全レーン占有時：従来通りランダム配置
+    topPosition =
+      scrollTopHeight +
+      Math.floor((availableHeight - letterSize) * Math.random());
+  }
+
+  if (selectedLane !== null) {
+    comment.setAttribute("data-lane", String(selectedLane));
+  }
 
   const commentStyle = {
     left: `${screenWidth}px`,
