@@ -24,9 +24,43 @@ const POPUP_SELECTOR_OBJ = {
   message: `${POPUP_SELECTOR_BASE} > div.mIw6Bf.nTlZFe.P9KVBf div[jsname="dTKtvb"] > div`,
 } as const;
 
+type ExtractedComment = {
+  message: string;
+  author: string | undefined;
+};
+
+/**
+ * メッセージノードの祖先を辿り、投稿者名を取得する。
+ * クラス名は変更されやすいため、jsname 属性を基準にDOMを探索する。
+ *
+ * 構造:
+ *   div[jsname="Ypafjf"]  ← メッセージグループ
+ *     └── ... > div (ヘッダー)
+ *           ├── div  ← 投稿者名（自分のメッセージでは存在しない）
+ *           └── div[jsname="biJjHb"]  ← タイムスタンプ
+ */
+const extractAuthorFromMessageNode = (
+  messageNode: Element
+): string | undefined => {
+  const messageGroup = messageNode.closest('[jsname="Ypafjf"]');
+  if (!messageGroup) return undefined;
+
+  // タイムスタンプ要素の親（ヘッダー）内で、タイムスタンプ以外のテキスト要素を探す
+  const timestampEl = messageGroup.querySelector('[jsname="biJjHb"]');
+  if (!timestampEl?.parentElement) return undefined;
+
+  for (const sibling of Array.from(timestampEl.parentElement.children)) {
+    if (sibling === timestampEl) continue;
+    const text = sibling.textContent?.trim();
+    if (text) return text;
+  }
+
+  return undefined;
+};
+
 const extractMessageFromPopupThread = (
   popupThread: Element | null
-): string | undefined => {
+): ExtractedComment | undefined => {
   if (!popupThread || popupThread.isEqualNode(prevPopupThread)) return;
 
   prevPopupThread = popupThread.cloneNode(true);
@@ -36,13 +70,14 @@ const extractMessageFromPopupThread = (
   if (messageNodes.length === 0) return;
 
   const messageNode = messageNodes[messageNodes.length - 1];
+  const author = extractAuthorFromMessageNode(messageNode);
 
-  return messageNode.innerHTML;
+  return { message: messageNode.innerHTML, author };
 };
 
 const extractMessageFromThread = (
   thread: Element | null
-): string | undefined => {
+): ExtractedComment | undefined => {
   if (!thread || thread.isEqualNode(prevThread)) return;
 
   prevThread = thread.cloneNode(true);
@@ -52,8 +87,9 @@ const extractMessageFromThread = (
   if (messageNodes.length === 0) return;
 
   const messageNode = messageNodes[messageNodes.length - 1];
+  const author = extractAuthorFromMessageNode(messageNode);
 
-  return messageNode.innerHTML;
+  return { message: messageNode.innerHTML, author };
 };
 
 const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
@@ -82,15 +118,16 @@ const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
       !chatPanelAside.classList.contains(CHAT_CLASS_OBJ.isHidden);
     const thread = document.querySelector(CHAT_SELECTOR_OBJ.thread);
 
-    const message = isChatVisible
+    const extracted = isChatVisible
       ? extractMessageFromThread(thread)
       : extractMessageFromPopupThread(popupThread);
 
-    if (!message) return;
+    if (!extracted) return;
 
     chrome.runtime.sendMessage({
       method: "setComment",
-      value: decodeHTMLSpecialWord(message),
+      value: decodeHTMLSpecialWord(extracted.message),
+      author: extracted.author,
     });
   } catch (e) {
     console.error(e);

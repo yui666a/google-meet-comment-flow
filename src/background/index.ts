@@ -2,6 +2,7 @@ import { injectComment } from "./injectComment";
 
 const StorageKeys = {
   Comment: "comment",
+  CommentAuthor: "commentAuthor",
   Color: "color",
   FontSize: "fontSize",
   IsEnabledStreaming: "isEnabledStreaming",
@@ -9,26 +10,39 @@ const StorageKeys = {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   switch (request.method) {
-    case "setComment":
-      chrome.storage.local.set({
+    case "setComment": {
+      const commentData: Record<string, string> = {
         comment: request.value,
-      });
+      };
+      if (request.author) {
+        commentData.commentAuthor = request.author;
+      }
+      chrome.storage.local.set(commentData);
       return true;
+    }
     case "deleteComment":
-      chrome.storage.local.remove([StorageKeys.Comment]);
+      chrome.storage.local.remove([
+        StorageKeys.Comment,
+        StorageKeys.CommentAuthor,
+      ]);
       return true;
     case "injectCommentToFocusedTab":
-      chrome.storage.local.get([StorageKeys.Comment]).then((res) => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (!tabs[0]?.id || !res[StorageKeys.Comment]) return;
+      chrome.storage.local
+        .get([StorageKeys.Comment, StorageKeys.CommentAuthor])
+        .then((res) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0]?.id || !res[StorageKeys.Comment]) return;
 
-          chrome.scripting.executeScript({
-            target: { tabId: tabs[0].id },
-            func: injectComment,
-            args: [res[StorageKeys.Comment] as string],
+            chrome.scripting.executeScript({
+              target: { tabId: tabs[0].id },
+              func: injectComment,
+              args: [
+                res[StorageKeys.Comment] as string,
+                (res[StorageKeys.CommentAuthor] as string) || "",
+              ],
+            });
           });
         });
-      });
       return true;
     case "setColor":
       chrome.storage.local.set({

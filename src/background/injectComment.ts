@@ -1,4 +1,4 @@
-export const injectComment = async (message: string) => {
+export const injectComment = async (message: string, author?: string) => {
   const screenHeight = window.innerHeight;
   const screenWidth = window.innerWidth;
 
@@ -62,11 +62,29 @@ export const injectComment = async (message: string) => {
     method: "getColor",
   });
 
+  // ユーザー名からハッシュ値を計算し、HSL色空間で色を決定する
+  const usernameToColor = (username: string): string => {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
+      hash = hash & hash;
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 70%, 60%)`;
+  };
+
+  const resolveColor = (): string => {
+    if (author) {
+      return usernameToColor(author);
+    }
+    return storedColorMessage || "green";
+  };
+
   comment.style["left"] = commentStyle["left"];
   comment.style["top"] = commentStyle["top"];
   comment.style["fontSize"] = commentStyle["fontSize"];
 
-  comment.style["color"] = storedColorMessage || "green";
+  comment.style["color"] = resolveColor();
 
   comment.style["position"] = "absolute";
   comment.style["zIndex"] = "2147483647";
