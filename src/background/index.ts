@@ -37,8 +37,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 							target: { tabId: tabs[0].id },
 							func: injectComment,
 							args: [
-								res[StorageKeys.Comment] as string,
-								(res[StorageKeys.CommentAuthor] as string) || "",
+								String(res[StorageKeys.Comment]),
+								String(res[StorageKeys.CommentAuthor] ?? ""),
 							],
 						});
 					});
