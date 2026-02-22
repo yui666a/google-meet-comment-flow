@@ -48,5 +48,5 @@ src/
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): `main` ブランチへの PR で Biome check + build を実行
+- **CI** (`.github/workflows/ci.yml`): `main` への push / 全 PR で Biome check + build を実行
 - **Deploy** (`.github/workflows/deploy-to-store.yml`): `v*.*.*` タグで Chrome Web Store へ publish
