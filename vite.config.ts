@@ -5,7 +5,7 @@ import { crx, defineManifest } from "@crxjs/vite-plugin";
 const manifest = defineManifest({
   manifest_version: 3,
   name: "Comment Stream for Meet",
-  version: "1.0.6",
+  version: "1.0.7",
   permissions: ["storage", "scripting"],
   host_permissions: ["http://*/*", "https://*/*"],
   action: {
@@ -15,11 +15,14 @@ const manifest = defineManifest({
   background: { service_worker: "src/background/index.ts" },
   content_scripts: [
     {
+      matches: ["https://meet.google.com/*", "https://chat.google.com/*"],
+      js: ["src/contentScripts/saveComment.ts"],
+      run_at: "document_start",
+      all_frames: true,
+    },
+    {
       matches: ["https://meet.google.com/*"],
-      js: [
-        "src/contentScripts/saveComment.ts",
-        "src/contentScripts/streamComment.ts",
-      ],
+      js: ["src/contentScripts/streamComment.ts"],
       run_at: "document_start",
     },
   ],

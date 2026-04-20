@@ -4,6 +4,7 @@ let prevThread: Node;
 
 let prevPopupThread: Node;
 
+// --- 旧エフェメラルチャット用セレクタ ---
 const CHAT_SELECTOR_BASE = "div.WUFI9b[data-panel-id='2']";
 
 const CHAT_SELECTOR_OBJ = {
@@ -24,13 +25,61 @@ const POPUP_SELECTOR_OBJ = {
 	message: `${POPUP_SELECTOR_BASE} > div.mIw6Bf.nTlZFe.P9KVBf div[jsname="dTKtvb"] > div`,
 } as const;
 
+// --- 新 Google Chat 統合型チャット用セレクタ ---
+// Google Meet が Google Chat ベースのチャットに移行したため、
+// jsname 属性ベースのセレクタで安定的にメッセージを取得する。
+//
+// 構造:
+//   div[jsname="yoHpJ"]                           ← チャットコンテナ
+//     └── c-wiz[data-is-user-topic="true"]        ← メッセージトピック
+//           ├── span[jsname="oU6v8b"][data-name]  ← 投稿者名
+//           └── div[jsname="bgckF"]               ← メッセージ本文
+const GCHAT_SELECTOR_OBJ = {
+	container: 'div[jsname="yoHpJ"]',
+	messageThread: 'c-wiz[data-is-user-topic="true"]',
+	messageText: 'div[jsname="bgckF"]',
+	author: 'span[jsname="oU6v8b"]',
+} as const;
+
+let lastGChatTopicId = "";
+
 type ExtractedComment = {
 	message: string;
 	author: string | undefined;
 };
 
 /**
- * メッセージノードの祖先を辿り、投稿者名を取得する。
+ * Google Chat 統合型チャットから最新メッセージを取得する。
+ * data-topic-id で重複検知を行う。
+ */
+const extractMessageFromGChat = (
+	container: Element | null,
+): ExtractedComment | undefined => {
+	if (!container) return;
+
+	const topics = container.querySelectorAll(GCHAT_SELECTOR_OBJ.messageThread);
+	if (topics.length === 0) return;
+
+	const lastTopic = topics[topics.length - 1];
+	const topicId = lastTopic.getAttribute("data-topic-id");
+
+	if (!topicId || topicId === lastGChatTopicId) return;
+	lastGChatTopicId = topicId;
+
+	const messageEl = lastTopic.querySelector(GCHAT_SELECTOR_OBJ.messageText);
+	if (!messageEl) return;
+
+	const message = messageEl.textContent?.trim();
+	if (!message) return;
+
+	const authorEl = lastTopic.querySelector(GCHAT_SELECTOR_OBJ.author);
+	const author = authorEl?.getAttribute("data-name") ?? undefined;
+
+	return { message, author };
+};
+
+/**
+ * メッセージノードの祖先を辿り、投稿者名を取得する（旧チャット用）。
  * クラス名は変更されやすいため、jsname 属性を基準にDOMを探索する。
  *
  * 構造:
@@ -109,18 +158,25 @@ const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
 
 		if (!isEnabledStreaming) return;
 
-		const popupThread = document.querySelector(POPUP_SELECTOR_OBJ.thread);
+		// 新 Google Chat 統合型チャットを優先して検出
+		const gChatContainer = document.querySelector(GCHAT_SELECTOR_OBJ.container);
+		let extracted = extractMessageFromGChat(gChatContainer);
 
-		const chatPanel = document.querySelector(CHAT_SELECTOR_OBJ.container);
-		const chatPanelAside = chatPanel?.closest("aside.R3Gmyc");
-		const isChatVisible =
-			chatPanelAside &&
-			!chatPanelAside.classList.contains(CHAT_CLASS_OBJ.isHidden);
-		const thread = document.querySelector(CHAT_SELECTOR_OBJ.thread);
+		// 旧エフェメラルチャットにフォールバック
+		if (!extracted) {
+			const popupThread = document.querySelector(POPUP_SELECTOR_OBJ.thread);
 
-		const extracted = isChatVisible
-			? extractMessageFromThread(thread)
-			: extractMessageFromPopupThread(popupThread);
+			const chatPanel = document.querySelector(CHAT_SELECTOR_OBJ.container);
+			const chatPanelAside = chatPanel?.closest("aside.R3Gmyc");
+			const isChatVisible =
+				chatPanelAside &&
+				!chatPanelAside.classList.contains(CHAT_CLASS_OBJ.isHidden);
+			const thread = document.querySelector(CHAT_SELECTOR_OBJ.thread);
+
+			extracted = isChatVisible
+				? extractMessageFromThread(thread)
+				: extractMessageFromPopupThread(popupThread);
+		}
 
 		if (!extracted) return;
 
