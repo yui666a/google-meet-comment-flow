@@ -1,4 +1,8 @@
-export const injectComment = async (message: string, author?: string) => {
+export const injectComment = async (
+	message: string,
+	author: string,
+	commentId: number,
+) => {
 	const screenHeight = window.innerHeight;
 	const screenWidth = window.innerWidth;
 
@@ -138,9 +142,10 @@ export const injectComment = async (message: string, author?: string) => {
 		},
 	);
 
-	// NOTE: delete data in localStorage so that same comments can be sent in a row
+	// NOTE: 表示中の commentId と一致する場合のみ削除する。連続投稿時に
+	// 新しいコメントを誤って消さないための安全策。
 	streamCommentUI.ready.then(() =>
-		chrome.runtime.sendMessage({ method: "deleteComment" }),
+		chrome.runtime.sendMessage({ method: "deleteComment", commentId }),
 	);
 
 	streamCommentUI.onfinish = () => {
