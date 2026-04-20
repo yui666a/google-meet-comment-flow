@@ -1,104 +1,77 @@
+// NOTE: この関数は chrome.scripting.executeScript により対象タブのページコンテキストで実行される。
+//       そのためトップレベル import に依存できず、定数や helper もすべて関数内に閉じ込める必要がある。
 export const injectComment = async (
 	message: string,
 	author: string,
 	commentId: number,
 ) => {
-	const screenHeight = window.innerHeight;
-	const screenWidth = window.innerWidth;
+	// --- 定数 ---
+	const SPEED_PX_PER_SEC = 400;
+	const FOOTER_HEIGHT_PX = 88;
+	const BASE_FONT_SIZE_RATIO = 0.05; // 画面高さに対するフォントサイズ基準
+	const LANE_GAP_RATIO = 0.2; // フォントサイズに対するレーン間隔
+	const DEFAULT_COLOR = "green";
+	const COMMENT_CLASS = "google-meet-comment-flow";
+	const LANE_ATTR = "data-lane";
+	const MAX_Z_INDEX = "2147483647";
+	const FONT_SIZE_COEFFICIENTS: Record<string, number> = {
+		XS: 0.25,
+		S: 0.5,
+		M: 1,
+		L: 2,
+		XL: 4,
+	};
+	const DEFAULT_FONT_SIZE_COEFFICIENT = FONT_SIZE_COEFFICIENTS.L;
 
-	const comment = document.createElement("span");
+	// --- helpers ---
+	// Google Slide の全画面モードでは最大 z-index の overlay が存在するため、
+	// そちらに追加しないとコメントが埋もれる。
+	const resolveTargetNode = (): HTMLElement => {
+		const fullScreenOverlay = document.querySelector<HTMLElement>(
+			"body > div.punch-full-screen-element.punch-full-window-overlay",
+		);
+		return fullScreenOverlay ?? document.body;
+	};
 
-	comment.textContent = message;
+	const resolveFontSizePx = (screenHeightPx: number, key: string): number => {
+		const coefficient =
+			FONT_SIZE_COEFFICIENTS[key] ?? DEFAULT_FONT_SIZE_COEFFICIENT;
+		return screenHeightPx * BASE_FONT_SIZE_RATIO * coefficient;
+	};
 
-	// NOTE: google slide full screen mode element
-	const gSlideContentNode = document.querySelector(
-		"body > div.punch-full-screen-element.punch-full-window-overlay",
-	);
+	type LanePlacement = { topPx: number; laneIndex: number | null };
 
-	/*
-  NOTE: When the focused tab is on google slide full screen mode,
-        target node is the specific div, whose z-index is max value
-        as the same as the value of streamed comments
+	const pickLanePlacement = (
+		fontSizePx: number,
+		availableHeightPx: number,
+		scrollTopPx: number,
+	): LanePlacement => {
+		const laneHeightPx = fontSizePx + fontSizePx * LANE_GAP_RATIO;
+		const laneCount = Math.max(1, Math.floor(availableHeightPx / laneHeightPx));
 
-  SEE: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
-  */
-	const targetNode = gSlideContentNode || document.body;
+		const occupiedLanes = new Set(
+			Array.from(
+				document.querySelectorAll(`.${COMMENT_CLASS}[${LANE_ATTR}]`),
+			).map((el) => Number(el.getAttribute(LANE_ATTR))),
+		);
 
-	targetNode.appendChild(comment);
+		const freeLanes = Array.from({ length: laneCount }, (_, i) => i).filter(
+			(i) => !occupiedLanes.has(i),
+		);
 
-	const storedFontSizeMessage = await chrome.runtime.sendMessage({
-		method: "getFontSize",
-	});
-
-	const letterSizeCoefficient = () => {
-		switch (storedFontSizeMessage) {
-			case "XS":
-				return 0.25;
-			case "S":
-				return 0.5;
-			case "M":
-				return 1;
-			case "L":
-				return 2;
-			case "XL":
-				return 4;
-			default:
-				return 2;
+		if (freeLanes.length > 0) {
+			const laneIndex = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+			return { topPx: scrollTopPx + laneIndex * laneHeightPx, laneIndex };
 		}
+
+		// 全レーン占有時はランダムフォールバック
+		const fallbackTopPx =
+			scrollTopPx +
+			Math.floor((availableHeightPx - fontSizePx) * Math.random());
+		return { topPx: fallbackTopPx, laneIndex: null };
 	};
 
-	const letterSize = screenHeight * 0.05 * letterSizeCoefficient();
-	comment.setAttribute("class", "google-meet-comment-flow");
-
-	const footerHeight = 88;
-	const scrollTopHeight = window.pageYOffset;
-	const availableHeight = screenHeight - footerHeight;
-
-	// レーン計算
-	const laneGap = letterSize * 0.2;
-	const laneHeight = letterSize + laneGap;
-	const laneCount = Math.max(1, Math.floor(availableHeight / laneHeight));
-
-	// DOM 上の既存コメント要素から占有中のレーンを取得
-	const occupiedLanes = new Set(
-		Array.from(
-			document.querySelectorAll(".google-meet-comment-flow[data-lane]"),
-		).map((el) => Number(el.getAttribute("data-lane"))),
-	);
-
-	// 空きレーンからランダムに選択
-	const freeLanes = Array.from({ length: laneCount }, (_, i) => i).filter(
-		(i) => !occupiedLanes.has(i),
-	);
-
-	let topPosition: number;
-	let selectedLane: number | null = null;
-
-	if (freeLanes.length > 0) {
-		selectedLane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-		topPosition = scrollTopHeight + selectedLane * laneHeight;
-	} else {
-		// 全レーン占有時：従来通りランダム配置
-		topPosition =
-			scrollTopHeight +
-			Math.floor((availableHeight - letterSize) * Math.random());
-	}
-
-	if (selectedLane !== null) {
-		comment.setAttribute("data-lane", String(selectedLane));
-	}
-
-	const commentStyle = {
-		left: `${screenWidth}px`,
-		top: `${topPosition}px`,
-		fontSize: `${letterSize}px`,
-	};
-
-	const storedColorMessage = await chrome.runtime.sendMessage({
-		method: "getColor",
-	});
-
-	// ユーザー名からハッシュ値を計算し、HSL色空間で色を決定する
+	// ユーザー名を HSL の hue に変換して、投稿者ごとに安定した色を割り当てる
 	const usernameToColor = (username: string): string => {
 		let hash = 0;
 		for (let i = 0; i < username.length; i++) {
@@ -109,46 +82,86 @@ export const injectComment = async (
 		return `hsl(${hue}, 70%, 60%)`;
 	};
 
-	const resolveColor = (): string => {
-		if (author) {
-			return usernameToColor(author);
-		}
-		return storedColorMessage || "green";
+	const resolveColor = (storedColor: string | undefined): string => {
+		if (author) return usernameToColor(author);
+		return storedColor || DEFAULT_COLOR;
 	};
 
-	comment.style.left = commentStyle.left;
-	comment.style.top = commentStyle.top;
-	comment.style.fontSize = commentStyle.fontSize;
+	const applyCommentStyles = (
+		el: HTMLElement,
+		leftPx: number,
+		topPx: number,
+		fontSizePx: number,
+		color: string,
+	) => {
+		el.style.position = "absolute";
+		el.style.left = `${leftPx}px`;
+		el.style.top = `${topPx}px`;
+		el.style.fontSize = `${fontSizePx}px`;
+		el.style.color = color;
+		el.style.zIndex = MAX_Z_INDEX;
+		el.style.whiteSpace = "nowrap";
+		el.style.lineHeight = "initial";
+	};
 
-	comment.style.color = resolveColor();
+	const animateComment = (
+		el: HTMLElement,
+		screenWidthPx: number,
+	): Animation => {
+		const travelDistancePx = screenWidthPx + el.offsetWidth;
+		const durationMs = (travelDistancePx / SPEED_PX_PER_SEC) * 1000;
 
-	comment.style.position = "absolute";
-	comment.style.zIndex = "2147483647";
-	comment.style.whiteSpace = "nowrap";
-	comment.style.lineHeight = "initial";
+		return el.animate(
+			{ left: `${-el.offsetWidth}px` },
+			{ duration: durationMs, easing: "linear" },
+		);
+	};
 
-	// 一定速度 (px/sec) で流す。移動距離 = 画面幅 + テキスト幅
-	const SPEED_PX_PER_SEC = 400;
-	const travelDistance = screenWidth + comment.offsetWidth;
-	const duration = (travelDistance / SPEED_PX_PER_SEC) * 1000;
+	// --- main flow ---
+	const screenHeightPx = window.innerHeight;
+	const screenWidthPx = window.innerWidth;
 
-	const streamCommentUI = comment.animate(
-		{
-			left: `${-comment.offsetWidth}px`,
-		},
-		{
-			duration,
-			easing: "linear",
-		},
+	const [storedFontSize, storedColor] = await Promise.all([
+		chrome.runtime.sendMessage({ method: "getFontSize" }),
+		chrome.runtime.sendMessage({ method: "getColor" }),
+	]);
+
+	const targetNode = resolveTargetNode();
+	const fontSizePx = resolveFontSizePx(screenHeightPx, storedFontSize);
+
+	const commentEl = document.createElement("span");
+	commentEl.textContent = message;
+	commentEl.setAttribute("class", COMMENT_CLASS);
+	targetNode.appendChild(commentEl);
+
+	const availableHeightPx = screenHeightPx - FOOTER_HEIGHT_PX;
+	const scrollTopPx = window.pageYOffset;
+	const { topPx, laneIndex } = pickLanePlacement(
+		fontSizePx,
+		availableHeightPx,
+		scrollTopPx,
+	);
+	if (laneIndex !== null) {
+		commentEl.setAttribute(LANE_ATTR, String(laneIndex));
+	}
+
+	applyCommentStyles(
+		commentEl,
+		screenWidthPx,
+		topPx,
+		fontSizePx,
+		resolveColor(storedColor),
 	);
 
-	// NOTE: 表示中の commentId と一致する場合のみ削除する。連続投稿時に
-	// 新しいコメントを誤って消さないための安全策。
-	streamCommentUI.ready.then(() =>
+	const animation = animateComment(commentEl, screenWidthPx);
+
+	// 表示中の commentId と一致する場合のみ storage から削除し、
+	// 連続投稿時に新しいコメントを誤削除するのを防ぐ。
+	animation.ready.then(() =>
 		chrome.runtime.sendMessage({ method: "deleteComment", commentId }),
 	);
 
-	streamCommentUI.onfinish = () => {
-		targetNode.removeChild(comment);
+	animation.onfinish = () => {
+		targetNode.removeChild(commentEl);
 	};
 };
