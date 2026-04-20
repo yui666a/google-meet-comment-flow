@@ -15,11 +15,14 @@ const manifest = defineManifest({
   background: { service_worker: "src/background/index.ts" },
   content_scripts: [
     {
+      matches: ["https://meet.google.com/*", "https://chat.google.com/*"],
+      js: ["src/contentScripts/saveComment.ts"],
+      run_at: "document_start",
+      all_frames: true,
+    },
+    {
       matches: ["https://meet.google.com/*"],
-      js: [
-        "src/contentScripts/saveComment.ts",
-        "src/contentScripts/streamComment.ts",
-      ],
+      js: ["src/contentScripts/streamComment.ts"],
       run_at: "document_start",
     },
   ],
