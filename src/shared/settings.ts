@@ -22,16 +22,7 @@ export const FONT_SIZES = {
 
 export type FontSize = (typeof FONT_SIZES)[keyof typeof FONT_SIZES];
 
-export const FONT_SIZE_COEFFICIENTS: Record<FontSize, number> = {
-	XS: 0.25,
-	S: 0.5,
-	M: 1,
-	L: 2,
-	XL: 4,
-};
-
 export const DEFAULT_FONT_SIZE: FontSize = "L";
-export const DEFAULT_COLOR_FALLBACK = "green";
 
 export const isColor = (value: unknown): value is Color =>
 	typeof value === "string" &&

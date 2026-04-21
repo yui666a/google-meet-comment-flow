@@ -1,0 +1,10 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"entry": [
+		"src/background/index.ts",
+		"src/contentScripts/saveComment.ts",
+		"src/contentScripts/streamComment.ts"
+	],
+	"project": ["src/**/*.{ts,tsx}"],
+	"ignoreDependencies": ["@types/chrome"]
+}
