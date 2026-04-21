@@ -1,3 +1,4 @@
+import type { SettingsPayload } from "../../shared/messages";
 import type { Color, FontSize } from "../../shared/settings";
 import { isColor, isFontSize } from "../../shared/settings";
 import { STORAGE_KEYS } from "../../shared/storageKeys";
@@ -30,3 +31,23 @@ export const getIsEnabledStreaming = async (): Promise<boolean | undefined> => {
 
 export const setIsEnabledStreaming = (value: boolean) =>
 	chrome.storage.local.set({ [STORAGE_KEYS.IsEnabledStreaming]: value });
+
+// popup 初期化時に 3 設定を 1 message / 1 storage.get にまとめて取得する
+export const getSettings = async (): Promise<SettingsPayload> => {
+	const stored = await chrome.storage.local.get([
+		STORAGE_KEYS.Color,
+		STORAGE_KEYS.FontSize,
+		STORAGE_KEYS.IsEnabledStreaming,
+	]);
+
+	const color = stored[STORAGE_KEYS.Color];
+	const fontSize = stored[STORAGE_KEYS.FontSize];
+	const isEnabledStreaming = stored[STORAGE_KEYS.IsEnabledStreaming];
+
+	return {
+		color: isColor(color) ? color : undefined,
+		fontSize: isFontSize(fontSize) ? fontSize : undefined,
+		isEnabledStreaming:
+			typeof isEnabledStreaming === "boolean" ? isEnabledStreaming : undefined,
+	};
+};
