@@ -1,5 +1,9 @@
 // NOTE: この関数は chrome.scripting.executeScript により対象タブのページコンテキストで実行される。
 //       そのためトップレベル import に依存できず、定数や helper もすべて関数内に閉じ込める必要がある。
+// SYNC:  shared/settings.ts の FONT_SIZES / DEFAULT_FONT_SIZE と以下の値を必ず揃えること。
+//         - FONT_SIZE_COEFFICIENTS のキー       ↔ FONT_SIZES の values (XS/S/M/L/XL)
+//         - DEFAULT_FONT_SIZE_COEFFICIENT の参照先 ↔ DEFAULT_FONT_SIZE ("L")
+//        片方だけ変更するとフォントサイズ選択 UI と injection の対応が壊れる。
 export const injectComment = async (
 	message: string,
 	author: string,
@@ -14,6 +18,7 @@ export const injectComment = async (
 	const COMMENT_CLASS = "google-meet-comment-flow";
 	const LANE_ATTR = "data-lane";
 	const MAX_Z_INDEX = "2147483647";
+	// NOTE: キーは shared/settings.ts の FONT_SIZES の values と一致させる
 	const FONT_SIZE_COEFFICIENTS: Record<string, number> = {
 		XS: 0.25,
 		S: 0.5,
@@ -21,6 +26,7 @@ export const injectComment = async (
 		L: 2,
 		XL: 4,
 	};
+	// NOTE: shared/settings.ts の DEFAULT_FONT_SIZE ("L") と一致させる
 	const DEFAULT_FONT_SIZE_COEFFICIENT = FONT_SIZE_COEFFICIENTS.L;
 
 	// --- helpers ---
