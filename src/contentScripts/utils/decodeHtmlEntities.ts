@@ -1,4 +1,4 @@
-export const decodeHTMLSpecialWord = (str: string): string => {
+export const decodeHtmlEntities = (str: string): string => {
 	return str
 		.replace(/&amp;/g, "&")
 		.replace(/&lt;/g, "<")
