@@ -1,3 +1,5 @@
+import type { Color, FontSize } from "./settings";
+
 export type SetCommentRequest = {
 	method: "setComment";
 	value: string;
@@ -13,10 +15,10 @@ export type FlushCommentRequest = {
 	method: "flushComment";
 };
 
-export type SetColorRequest = { method: "setColor"; value: string };
+export type SetColorRequest = { method: "setColor"; value: Color };
 export type GetColorRequest = { method: "getColor" };
 
-export type SetFontSizeRequest = { method: "setFontSize"; value: string };
+export type SetFontSizeRequest = { method: "setFontSize"; value: FontSize };
 export type GetFontSizeRequest = { method: "getFontSize" };
 
 export type SetIsEnabledStreamingRequest = {
