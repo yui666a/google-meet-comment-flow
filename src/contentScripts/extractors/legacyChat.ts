@@ -38,24 +38,29 @@ const extractAuthorFromMessageNode = (
 
 // スレッド要素の差分を検出しつつ最新メッセージを返す抽出器を生成する factory。
 // 旧チャットと旧ポップアップは構造が似ているためセレクタ差し替えで共通化できる。
+//
+// 差分検出は「メッセージ要素数 + 末尾 message node の innerHTML」で判定する。
+// 以前は isEqualNode + cloneNode(true) でツリーを丸ごとディープ比較・コピーして
+// いたため、長時間ミーティングで DOM が肥大化すると O(n) の負荷がかかっていた。
 const createThreadExtractor = (
 	getThread: () => Element | null,
 	messageSelector: string,
 ): CommentExtractor => {
-	let lastSnapshot: Node | undefined;
+	let lastSignature: string | undefined;
 
 	return (): ExtractedComment | undefined => {
 		const thread = getThread();
-		if (!thread || thread.isEqualNode(lastSnapshot ?? null)) return;
-
-		lastSnapshot = thread.cloneNode(true);
+		if (!thread) return;
 
 		const messageNodes = thread.querySelectorAll(messageSelector);
 		if (messageNodes.length === 0) return;
 
 		const messageNode = messageNodes[messageNodes.length - 1];
-		const author = extractAuthorFromMessageNode(messageNode);
+		const signature = `${messageNodes.length}:${messageNode.innerHTML}`;
+		if (signature === lastSignature) return;
+		lastSignature = signature;
 
+		const author = extractAuthorFromMessageNode(messageNode);
 		return { message: messageNode.innerHTML, author };
 	};
 };
