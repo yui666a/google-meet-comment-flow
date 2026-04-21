@@ -14,6 +14,9 @@ const App = () => {
 	const [color, setColor] = useState<Color>(COLORS.Auto);
 	const [fontSize, setFontSize] = useState<FontSize>(DEFAULT_FONT_SIZE);
 	const [isEnabledStreaming, setIsEnabledStreaming] = useState<boolean>(false);
+	// storage からの読み込みが終わるまでフォームを disabled にして、
+	// 初期値 → 実値 のフリッカを防ぐ。
+	const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
 	const handleChangeColor = (e: ChangeEvent<HTMLSelectElement>) => {
 		const value = e.target.value;
@@ -55,6 +58,8 @@ const App = () => {
 				}
 			} catch (e) {
 				console.error(e);
+			} finally {
+				setIsLoaded(true);
 			}
 		};
 
@@ -72,6 +77,7 @@ const App = () => {
 						id="comment-color"
 						value={color}
 						onChange={handleChangeColor}
+						disabled={!isLoaded}
 					>
 						{Object.values(COLORS).map((c) => (
 							<option key={c} value={c}>
@@ -87,6 +93,7 @@ const App = () => {
 						id="comment-font-size"
 						value={fontSize}
 						onChange={handleChangeFontSize}
+						disabled={!isLoaded}
 					>
 						{Object.values(FONT_SIZES).map((fs) => (
 							<option key={fs} value={fs}>
@@ -104,6 +111,7 @@ const App = () => {
 							type="checkbox"
 							checked={isEnabledStreaming}
 							onChange={handleChangeIsEnabledStreaming}
+							disabled={!isLoaded}
 						/>
 						{/* biome-ignore lint/a11y/noLabelWithoutControl: CSS toggle label paired with input via htmlFor */}
 						<label htmlFor="toggle" className="toggle-label" />
