@@ -5,6 +5,36 @@ import {
 import { STORAGE_KEYS } from "../../shared/storageKeys";
 import { injectComment } from "../injectComment";
 
+type StoredCommentPayload = {
+	message: string;
+	author: string;
+	commentId: number;
+};
+
+// storage の型は unknown 相当のため、injection に渡す前に値の形状を narrow する。
+const readStoredComment = async (): Promise<
+	StoredCommentPayload | undefined
+> => {
+	const stored = await chrome.storage.local.get([
+		STORAGE_KEYS.Comment,
+		STORAGE_KEYS.CommentAuthor,
+		STORAGE_KEYS.CommentId,
+	]);
+
+	const message = stored[STORAGE_KEYS.Comment];
+	const author = stored[STORAGE_KEYS.CommentAuthor];
+	const commentId = stored[STORAGE_KEYS.CommentId];
+
+	if (typeof message !== "string" || message === "") return undefined;
+	if (typeof commentId !== "number") return undefined;
+
+	return {
+		message,
+		author: typeof author === "string" ? author : "",
+		commentId,
+	};
+};
+
 export const setComment = async (value: string, author?: string) => {
 	// author が未指定のときは前回値が残らないよう明示的にクリアする
 	await chrome.storage.local.set({
@@ -27,14 +57,8 @@ export const deleteCommentIfCurrent = async (commentId: number) => {
 };
 
 export const flushCommentToActiveTab = async () => {
-	const stored = await chrome.storage.local.get([
-		STORAGE_KEYS.Comment,
-		STORAGE_KEYS.CommentAuthor,
-		STORAGE_KEYS.CommentId,
-	]);
-
-	const comment = stored[STORAGE_KEYS.Comment];
-	if (!comment) return;
+	const payload = await readStoredComment();
+	if (!payload) return;
 
 	const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 	if (!tab?.id) return;
@@ -43,9 +67,9 @@ export const flushCommentToActiveTab = async () => {
 		target: { tabId: tab.id },
 		func: injectComment,
 		args: [
-			String(comment),
-			String(stored[STORAGE_KEYS.CommentAuthor] ?? ""),
-			Number(stored[STORAGE_KEYS.CommentId] ?? 0),
+			payload.message,
+			payload.author,
+			payload.commentId,
 			FONT_SIZE_COEFFICIENTS,
 			FONT_SIZE_COEFFICIENTS[DEFAULT_FONT_SIZE],
 		],
