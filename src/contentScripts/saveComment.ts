@@ -71,8 +71,10 @@ const observer = new MutationObserver((mutations) => {
 	}
 });
 
-const startObserving = () => {
-	initStreamingFlagCache();
+const startObserving = async () => {
+	// observe 開始前に初期値を読むことで、有効化済みの状態で開かれた meet の
+	// 初期 DOM mutation を取り逃がさない (初期化完了前は cache が false のため)。
+	await initStreamingFlagCache();
 	observer.observe(document.body, { subtree: true, childList: true });
 };
 
