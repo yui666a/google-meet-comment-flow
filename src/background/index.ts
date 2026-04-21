@@ -1,7 +1,7 @@
 import type { MessageRequest } from "../shared/messages";
 import {
-	deleteCommentIfMatches,
-	flushCommentToFocusedTab,
+	deleteCommentIfCurrent,
+	flushCommentToActiveTab,
 	setComment,
 } from "./handlers/comment";
 import {
@@ -21,11 +21,11 @@ chrome.runtime.onMessage.addListener(
 				return false;
 
 			case "deleteComment":
-				deleteCommentIfMatches(request.commentId);
+				deleteCommentIfCurrent(request.commentId);
 				return false;
 
 			case "flushComment":
-				flushCommentToFocusedTab();
+				flushCommentToActiveTab();
 				return false;
 
 			case "setColor":

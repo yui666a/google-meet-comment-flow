@@ -11,7 +11,7 @@ export const setComment = async (value: string, author?: string) => {
 };
 
 // 指定された commentId と一致する場合のみコメントを削除する（連続投稿時のレース防止）
-export const deleteCommentIfMatches = async (commentId: number) => {
+export const deleteCommentIfCurrent = async (commentId: number) => {
 	const stored = await chrome.storage.local.get([STORAGE_KEYS.CommentId]);
 	if (stored[STORAGE_KEYS.CommentId] !== commentId) return;
 
@@ -22,7 +22,7 @@ export const deleteCommentIfMatches = async (commentId: number) => {
 	]);
 };
 
-export const flushCommentToFocusedTab = async () => {
+export const flushCommentToActiveTab = async () => {
 	const stored = await chrome.storage.local.get([
 		STORAGE_KEYS.Comment,
 		STORAGE_KEYS.CommentAuthor,
