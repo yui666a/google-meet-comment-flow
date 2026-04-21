@@ -2,12 +2,12 @@ import { STORAGE_KEYS } from "../../shared/storageKeys";
 import { injectComment } from "../injectComment";
 
 export const setComment = async (value: string, author?: string) => {
-	const data: Record<string, string | number> = {
+	// author が未指定のときは前回値が残らないよう明示的にクリアする
+	await chrome.storage.local.set({
 		[STORAGE_KEYS.Comment]: value,
 		[STORAGE_KEYS.CommentId]: Date.now(),
-	};
-	if (author) data[STORAGE_KEYS.CommentAuthor] = author;
-	await chrome.storage.local.set(data);
+		[STORAGE_KEYS.CommentAuthor]: author ?? "",
+	});
 };
 
 // 指定された commentId と一致する場合のみコメントを削除する（連続投稿時のレース防止）

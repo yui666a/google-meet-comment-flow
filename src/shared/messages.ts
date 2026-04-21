@@ -37,5 +37,3 @@ export type MessageRequest =
 	| GetFontSizeRequest
 	| SetIsEnabledStreamingRequest
 	| GetIsEnabledStreamingRequest;
-
-export type MessageMethod = MessageRequest["method"];

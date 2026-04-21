@@ -9,7 +9,8 @@
     "lint": "biome lint ./src",
     "format": "biome format ./src",
     "check": "biome check ./src",
-    "check:fix": "biome check --write ./src"
+    "check:fix": "biome check --write ./src",
+    "knip": "knip"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -27,6 +28,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "knip": "^6.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
   }
