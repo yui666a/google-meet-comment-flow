@@ -1,6 +1,12 @@
 // NOTE: この関数は chrome.scripting.executeScript により対象タブのページコンテキストで実行される。
 //       そのためトップレベル import に依存できず、定数・係数テーブル・デフォルト値はすべて
 //       呼び出し側 (background handler) から引数として渡す必要がある。
+//
+// STRUCTURE:
+//   1. constants        … マジックナンバー / DOM 属性名
+//   2. pure logic       … DOM / chrome API に依存しない計算 (shared/commentLogic.ts と同一ロジック)
+//   3. DOM side effects … 要素生成・配置・アニメーション登録
+//   4. main flow        … 上記を組み立てるエントリポイント
 export const injectComment = async (
 	message: string,
 	author: string,
@@ -8,9 +14,11 @@ export const injectComment = async (
 	fontSizeCoefficients: Record<string, number>,
 	defaultFontSizeCoefficient: number,
 ) => {
-	// --- 定数 ---
+	// ============================================================
+	// 1. constants
+	// ============================================================
 	const SPEED_PX_PER_SEC = 400;
-	const FOOTER_HEIGHT_PX = 88;
+	const FOOTER_HEIGHT_PX = 88; // Meet の下部ツールバー実測値
 	const BASE_FONT_SIZE_RATIO = 0.05; // 画面高さに対するフォントサイズ基準
 	const LANE_GAP_RATIO = 0.2; // フォントサイズに対するレーン間隔
 	const DEFAULT_COLOR = "green";
@@ -18,56 +26,17 @@ export const injectComment = async (
 	const LANE_ATTR = "data-lane";
 	const MAX_Z_INDEX = "2147483647";
 
-	// --- helpers ---
-	// Google Slide の全画面モードでは最大 z-index の overlay が存在するため、
-	// そちらに追加しないとコメントが埋もれる。
-	const resolveTargetNode = (): HTMLElement => {
-		const fullScreenOverlay = document.querySelector<HTMLElement>(
-			"body > div.punch-full-screen-element.punch-full-window-overlay",
-		);
-		return fullScreenOverlay ?? document.body;
-	};
-
+	// ============================================================
+	// 2. pure logic
+	//    shared/commentLogic.ts と同じロジックを inline 実装する。
+	//    executeScript 制約により import できないため、ロジック検証は
+	//    shared/commentLogic.test.ts 側で担保する。
+	// ============================================================
 	const resolveFontSizePx = (screenHeightPx: number, key: string): number => {
 		const coefficient = fontSizeCoefficients[key] ?? defaultFontSizeCoefficient;
 		return screenHeightPx * BASE_FONT_SIZE_RATIO * coefficient;
 	};
 
-	type LanePlacement = { topPx: number; laneIndex: number | null };
-
-	// NOTE: document.querySelectorAll で現在表示中のコメント要素を参照する副作用を持つ。
-	//       呼び出し側で配置前タイミングに限定すること。
-	const pickLanePlacement = (
-		fontSizePx: number,
-		availableHeightPx: number,
-		scrollTopPx: number,
-	): LanePlacement => {
-		const laneHeightPx = fontSizePx + fontSizePx * LANE_GAP_RATIO;
-		const laneCount = Math.max(1, Math.floor(availableHeightPx / laneHeightPx));
-
-		const occupiedLanes = new Set(
-			Array.from(document.querySelectorAll(`.${COMMENT_CLASS}[${LANE_ATTR}]`))
-				.map((el) => Number(el.getAttribute(LANE_ATTR)))
-				.filter((n) => Number.isFinite(n)),
-		);
-
-		const freeLanes = Array.from({ length: laneCount }, (_, i) => i).filter(
-			(i) => !occupiedLanes.has(i),
-		);
-
-		if (freeLanes.length > 0) {
-			const laneIndex = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-			return { topPx: scrollTopPx + laneIndex * laneHeightPx, laneIndex };
-		}
-
-		// 全レーン占有時はランダムフォールバック
-		const fallbackTopPx =
-			scrollTopPx +
-			Math.floor((availableHeightPx - fontSizePx) * Math.random());
-		return { topPx: fallbackTopPx, laneIndex: null };
-	};
-
-	// ユーザー名を HSL の hue に変換して、投稿者ごとに安定した色を割り当てる
 	const usernameToColor = (username: string): string => {
 		let hash = 0;
 		for (let i = 0; i < username.length; i++) {
@@ -81,6 +50,67 @@ export const injectComment = async (
 	const resolveColor = (storedColor: string | undefined): string => {
 		if (author) return usernameToColor(author);
 		return storedColor || DEFAULT_COLOR;
+	};
+
+	const computeLaneLayout = (fontSizePx: number, availableHeightPx: number) => {
+		const laneHeightPx = fontSizePx + fontSizePx * LANE_GAP_RATIO;
+		const laneCount = Math.max(1, Math.floor(availableHeightPx / laneHeightPx));
+		return { laneHeightPx, laneCount };
+	};
+
+	const pickFreeLane = (
+		laneCount: number,
+		occupiedLanes: ReadonlySet<number>,
+	): number | null => {
+		const freeLanes: number[] = [];
+		for (let i = 0; i < laneCount; i++) {
+			if (!occupiedLanes.has(i)) freeLanes.push(i);
+		}
+		if (freeLanes.length === 0) return null;
+		return freeLanes[Math.floor(Math.random() * freeLanes.length)];
+	};
+
+	// ============================================================
+	// 3. DOM side effects
+	// ============================================================
+	// Google Slide の全画面モードでは最大 z-index の overlay が存在するため、
+	// そちらに追加しないとコメントが埋もれる。
+	const resolveTargetNode = (): HTMLElement => {
+		const fullScreenOverlay = document.querySelector<HTMLElement>(
+			"body > div.punch-full-screen-element.punch-full-window-overlay",
+		);
+		return fullScreenOverlay ?? document.body;
+	};
+
+	const readOccupiedLanes = (): Set<number> =>
+		new Set(
+			Array.from(document.querySelectorAll(`.${COMMENT_CLASS}[${LANE_ATTR}]`))
+				.map((el) => Number(el.getAttribute(LANE_ATTR)))
+				.filter((n) => Number.isFinite(n)),
+		);
+
+	type LanePlacement = { topPx: number; laneIndex: number | null };
+
+	const decideLanePlacement = (
+		fontSizePx: number,
+		availableHeightPx: number,
+		scrollTopPx: number,
+	): LanePlacement => {
+		const { laneHeightPx, laneCount } = computeLaneLayout(
+			fontSizePx,
+			availableHeightPx,
+		);
+		const laneIndex = pickFreeLane(laneCount, readOccupiedLanes());
+
+		if (laneIndex !== null) {
+			return { topPx: scrollTopPx + laneIndex * laneHeightPx, laneIndex };
+		}
+
+		// 全レーン占有時はランダムフォールバック
+		const fallbackTopPx =
+			scrollTopPx +
+			Math.floor((availableHeightPx - fontSizePx) * Math.random());
+		return { topPx: fallbackTopPx, laneIndex: null };
 	};
 
 	const applyCommentStyles = (
@@ -98,19 +128,6 @@ export const injectComment = async (
 		el.style.zIndex = MAX_Z_INDEX;
 		el.style.whiteSpace = "nowrap";
 		el.style.lineHeight = "initial";
-	};
-
-	const animateComment = (
-		el: HTMLElement,
-		screenWidthPx: number,
-	): Animation => {
-		const travelDistancePx = screenWidthPx + el.offsetWidth;
-		const durationMs = (travelDistancePx / SPEED_PX_PER_SEC) * 1000;
-
-		return el.animate(
-			{ left: `${-el.offsetWidth}px` },
-			{ duration: durationMs, easing: "linear" },
-		);
 	};
 
 	const createCommentElement = (
@@ -133,7 +150,7 @@ export const injectComment = async (
 	) => {
 		const availableHeightPx = screenHeightPx - FOOTER_HEIGHT_PX;
 		const scrollTopPx = window.pageYOffset;
-		const { topPx, laneIndex } = pickLanePlacement(
+		const { topPx, laneIndex } = decideLanePlacement(
 			fontSizePx,
 			availableHeightPx,
 			scrollTopPx,
@@ -155,7 +172,13 @@ export const injectComment = async (
 		screenWidthPx: number,
 		parent: HTMLElement,
 	) => {
-		const animation = animateComment(el, screenWidthPx);
+		const travelDistancePx = screenWidthPx + el.offsetWidth;
+		const durationMs = (travelDistancePx / SPEED_PX_PER_SEC) * 1000;
+
+		const animation = el.animate(
+			{ left: `${-el.offsetWidth}px` },
+			{ duration: durationMs, easing: "linear" },
+		);
 
 		// アニメーション完了時に DOM 除去と storage 削除を行う。
 		// `ready` (アニメ開始時) ではなく `finish` で削除することで、
@@ -169,7 +192,9 @@ export const injectComment = async (
 		};
 	};
 
-	// --- main flow ---
+	// ============================================================
+	// 4. main flow
+	// ============================================================
 	const screenHeightPx = window.innerHeight;
 	const screenWidthPx = window.innerWidth;
 
