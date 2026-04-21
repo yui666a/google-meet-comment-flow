@@ -2,7 +2,7 @@ import { STORAGE_KEYS } from "../shared/storageKeys";
 import { extractFromGoogleChat } from "./extractors/googleChat";
 import { extractFromLegacyChat } from "./extractors/legacyChat";
 import type { CommentExtractor } from "./extractors/types";
-import { decodeHTMLSpecialWord } from "./utils/decodeHTMLSpecialWord";
+import { decodeHtmlEntities } from "./utils/decodeHtmlEntities";
 
 // 新 Google Chat 統合型を優先し、検出できなければ旧チャットにフォールバック
 const EXTRACTORS: readonly CommentExtractor[] = [
@@ -62,7 +62,7 @@ const observer = new MutationObserver((mutations) => {
 		chrome.runtime
 			.sendMessage({
 				method: "setComment",
-				value: decodeHTMLSpecialWord(extracted.message),
+				value: decodeHtmlEntities(extracted.message),
 				author: extracted.author,
 			})
 			.catch((e) => console.error(e));
