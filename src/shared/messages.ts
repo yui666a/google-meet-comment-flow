@@ -1,41 +1,15 @@
 import type { Color, FontSize } from "./settings";
 
-export type SetCommentRequest = {
-	method: "setComment";
-	value: string;
-	author?: string;
-};
-
-export type DeleteCommentRequest = {
-	method: "deleteComment";
-	commentId: number;
-};
-
-export type FlushCommentRequest = {
-	method: "flushComment";
-};
-
-export type SetColorRequest = { method: "setColor"; value: Color };
-export type GetColorRequest = { method: "getColor" };
-
-export type SetFontSizeRequest = { method: "setFontSize"; value: FontSize };
-export type GetFontSizeRequest = { method: "getFontSize" };
-
-export type SetIsEnabledStreamingRequest = {
-	method: "setIsEnabledStreaming";
-	value: boolean;
-};
-export type GetIsEnabledStreamingRequest = {
-	method: "getIsEnabledStreaming";
-};
-
+// 外部から参照されるのは MessageRequest (discriminated union) のみ。
+// 個別の Request 型は union の要素として inline 定義し、method 文字列を
+// 一覧できる形に保つ。
 export type MessageRequest =
-	| SetCommentRequest
-	| DeleteCommentRequest
-	| FlushCommentRequest
-	| SetColorRequest
-	| GetColorRequest
-	| SetFontSizeRequest
-	| GetFontSizeRequest
-	| SetIsEnabledStreamingRequest
-	| GetIsEnabledStreamingRequest;
+	| { method: "setComment"; value: string; author?: string }
+	| { method: "deleteComment"; commentId: number }
+	| { method: "flushComment" }
+	| { method: "setColor"; value: Color }
+	| { method: "getColor" }
+	| { method: "setFontSize"; value: FontSize }
+	| { method: "getFontSize" }
+	| { method: "setIsEnabledStreaming"; value: boolean }
+	| { method: "getIsEnabledStreaming" };
