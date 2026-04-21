@@ -1,21 +1,23 @@
+import type { Color, FontSize } from "../../shared/settings";
+import { isColor, isFontSize } from "../../shared/settings";
 import { STORAGE_KEYS } from "../../shared/storageKeys";
 
-export const getColor = async (): Promise<string | undefined> => {
+export const getColor = async (): Promise<Color | undefined> => {
 	const stored = await chrome.storage.local.get([STORAGE_KEYS.Color]);
 	const value = stored[STORAGE_KEYS.Color];
-	return typeof value === "string" ? value : undefined;
+	return isColor(value) ? value : undefined;
 };
 
-export const setColor = (value: string) =>
+export const setColor = (value: Color) =>
 	chrome.storage.local.set({ [STORAGE_KEYS.Color]: value });
 
-export const getFontSize = async (): Promise<string | undefined> => {
+export const getFontSize = async (): Promise<FontSize | undefined> => {
 	const stored = await chrome.storage.local.get([STORAGE_KEYS.FontSize]);
 	const value = stored[STORAGE_KEYS.FontSize];
-	return typeof value === "string" ? value : undefined;
+	return isFontSize(value) ? value : undefined;
 };
 
-export const setFontSize = (value: string) =>
+export const setFontSize = (value: FontSize) =>
 	chrome.storage.local.set({ [STORAGE_KEYS.FontSize]: value });
 
 export const getIsEnabledStreaming = async (): Promise<boolean | undefined> => {
