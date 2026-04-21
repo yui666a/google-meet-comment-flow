@@ -155,13 +155,14 @@ export const injectComment = async (
 
 	const animation = animateComment(commentEl, screenWidthPx);
 
-	// 表示中の commentId と一致する場合のみ storage から削除し、
-	// 連続投稿時に新しいコメントを誤削除するのを防ぐ。
-	animation.ready.then(() =>
-		chrome.runtime.sendMessage({ method: "deleteComment", commentId }),
-	);
-
+	// アニメーション完了時に DOM 除去と storage 削除を行う。
+	// `ready` (アニメ開始時) ではなく `finish` で削除することで、
+	//  - 他タブが同じ storage を購読している場合の取りこぼし
+	//  - アニメ途中での storage 書き換えによる副作用
+	//  を防ぐ。
+	// commentId 一致チェックは handler 側で行うため、連続投稿時の誤削除は起きない。
 	animation.onfinish = () => {
 		targetNode.removeChild(commentEl);
+		chrome.runtime.sendMessage({ method: "deleteComment", commentId });
 	};
 };
