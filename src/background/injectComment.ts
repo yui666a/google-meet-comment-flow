@@ -41,6 +41,8 @@ export const injectComment = async (
 
 	type LanePlacement = { topPx: number; laneIndex: number | null };
 
+	// NOTE: document.querySelectorAll で現在表示中のコメント要素を参照する副作用を持つ。
+	//       呼び出し側で配置前タイミングに限定すること。
 	const pickLanePlacement = (
 		fontSizePx: number,
 		availableHeightPx: number,
@@ -117,6 +119,62 @@ export const injectComment = async (
 		);
 	};
 
+	const createCommentElement = (
+		parent: HTMLElement,
+		text: string,
+	): HTMLElement => {
+		const el = document.createElement("span");
+		el.textContent = text;
+		el.setAttribute("class", COMMENT_CLASS);
+		parent.appendChild(el);
+		return el;
+	};
+
+	const placeComment = (
+		el: HTMLElement,
+		fontSizePx: number,
+		screenWidthPx: number,
+		screenHeightPx: number,
+		storedColor: string | undefined,
+	) => {
+		const availableHeightPx = screenHeightPx - FOOTER_HEIGHT_PX;
+		const scrollTopPx = window.pageYOffset;
+		const { topPx, laneIndex } = pickLanePlacement(
+			fontSizePx,
+			availableHeightPx,
+			scrollTopPx,
+		);
+		if (laneIndex !== null) {
+			el.setAttribute(LANE_ATTR, String(laneIndex));
+		}
+		applyCommentStyles(
+			el,
+			screenWidthPx,
+			topPx,
+			fontSizePx,
+			resolveColor(storedColor),
+		);
+	};
+
+	const startAnimation = (
+		el: HTMLElement,
+		screenWidthPx: number,
+		parent: HTMLElement,
+	) => {
+		const animation = animateComment(el, screenWidthPx);
+
+		// アニメーション完了時に DOM 除去と storage 削除を行う。
+		// `ready` (アニメ開始時) ではなく `finish` で削除することで、
+		//  - 他タブが同じ storage を購読している場合の取りこぼし
+		//  - アニメ途中での storage 書き換えによる副作用
+		//  を防ぐ。
+		// commentId 一致チェックは handler 側で行うため、連続投稿時の誤削除は起きない。
+		animation.onfinish = () => {
+			parent.removeChild(el);
+			chrome.runtime.sendMessage({ method: "deleteComment", commentId });
+		};
+	};
+
 	// --- main flow ---
 	const screenHeightPx = window.innerHeight;
 	const screenWidthPx = window.innerWidth;
@@ -129,40 +187,13 @@ export const injectComment = async (
 	const targetNode = resolveTargetNode();
 	const fontSizePx = resolveFontSizePx(screenHeightPx, storedFontSize);
 
-	const commentEl = document.createElement("span");
-	commentEl.textContent = message;
-	commentEl.setAttribute("class", COMMENT_CLASS);
-	targetNode.appendChild(commentEl);
-
-	const availableHeightPx = screenHeightPx - FOOTER_HEIGHT_PX;
-	const scrollTopPx = window.pageYOffset;
-	const { topPx, laneIndex } = pickLanePlacement(
-		fontSizePx,
-		availableHeightPx,
-		scrollTopPx,
-	);
-	if (laneIndex !== null) {
-		commentEl.setAttribute(LANE_ATTR, String(laneIndex));
-	}
-
-	applyCommentStyles(
+	const commentEl = createCommentElement(targetNode, message);
+	placeComment(
 		commentEl,
-		screenWidthPx,
-		topPx,
 		fontSizePx,
-		resolveColor(storedColor),
+		screenWidthPx,
+		screenHeightPx,
+		storedColor,
 	);
-
-	const animation = animateComment(commentEl, screenWidthPx);
-
-	// アニメーション完了時に DOM 除去と storage 削除を行う。
-	// `ready` (アニメ開始時) ではなく `finish` で削除することで、
-	//  - 他タブが同じ storage を購読している場合の取りこぼし
-	//  - アニメ途中での storage 書き換えによる副作用
-	//  を防ぐ。
-	// commentId 一致チェックは handler 側で行うため、連続投稿時の誤削除は起きない。
-	animation.onfinish = () => {
-		targetNode.removeChild(commentEl);
-		chrome.runtime.sendMessage({ method: "deleteComment", commentId });
-	};
+	startAnimation(commentEl, screenWidthPx, targetNode);
 };
