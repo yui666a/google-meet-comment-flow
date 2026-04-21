@@ -50,9 +50,9 @@ export const injectComment = async (
 		const laneCount = Math.max(1, Math.floor(availableHeightPx / laneHeightPx));
 
 		const occupiedLanes = new Set(
-			Array.from(
-				document.querySelectorAll(`.${COMMENT_CLASS}[${LANE_ATTR}]`),
-			).map((el) => Number(el.getAttribute(LANE_ATTR))),
+			Array.from(document.querySelectorAll(`.${COMMENT_CLASS}[${LANE_ATTR}]`))
+				.map((el) => Number(el.getAttribute(LANE_ATTR)))
+				.filter((n) => Number.isFinite(n)),
 		);
 
 		const freeLanes = Array.from({ length: laneCount }, (_, i) => i).filter(
