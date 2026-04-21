@@ -8,6 +8,7 @@ import {
 	getColor,
 	getFontSize,
 	getIsEnabledStreaming,
+	getSettings,
 	setColor,
 	setFontSize,
 	setIsEnabledStreaming,
@@ -50,6 +51,10 @@ chrome.runtime.onMessage.addListener(
 
 			case "getIsEnabledStreaming":
 				getIsEnabledStreaming().then(sendResponse);
+				return true;
+
+			case "getSettings":
+				getSettings().then(sendResponse);
 				return true;
 
 			default: {

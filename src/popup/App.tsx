@@ -44,17 +44,14 @@ const App = () => {
 	useEffect(() => {
 		const loadStoredSettings = async () => {
 			try {
-				const [storedColor, storedFontSize, storedIsEnabledStreaming] =
-					await Promise.all([
-						chrome.runtime.sendMessage({ method: "getColor" }),
-						chrome.runtime.sendMessage({ method: "getFontSize" }),
-						chrome.runtime.sendMessage({ method: "getIsEnabledStreaming" }),
-					]);
+				const settings = await chrome.runtime.sendMessage({
+					method: "getSettings",
+				});
 
-				if (isColor(storedColor)) setColor(storedColor);
-				if (isFontSize(storedFontSize)) setFontSize(storedFontSize);
-				if (typeof storedIsEnabledStreaming === "boolean") {
-					setIsEnabledStreaming(storedIsEnabledStreaming);
+				if (isColor(settings?.color)) setColor(settings.color);
+				if (isFontSize(settings?.fontSize)) setFontSize(settings.fontSize);
+				if (typeof settings?.isEnabledStreaming === "boolean") {
+					setIsEnabledStreaming(settings.isEnabledStreaming);
 				}
 			} catch (e) {
 				console.error(e);
