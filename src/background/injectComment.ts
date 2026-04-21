@@ -1,13 +1,12 @@
 // NOTE: この関数は chrome.scripting.executeScript により対象タブのページコンテキストで実行される。
-//       そのためトップレベル import に依存できず、定数や helper もすべて関数内に閉じ込める必要がある。
-// SYNC:  shared/settings.ts の FONT_SIZES / DEFAULT_FONT_SIZE と以下の値を必ず揃えること。
-//         - FONT_SIZE_COEFFICIENTS のキー       ↔ FONT_SIZES の values (XS/S/M/L/XL)
-//         - DEFAULT_FONT_SIZE_COEFFICIENT の参照先 ↔ DEFAULT_FONT_SIZE ("L")
-//        片方だけ変更するとフォントサイズ選択 UI と injection の対応が壊れる。
+//       そのためトップレベル import に依存できず、定数・係数テーブル・デフォルト値はすべて
+//       呼び出し側 (background handler) から引数として渡す必要がある。
 export const injectComment = async (
 	message: string,
 	author: string,
 	commentId: number,
+	fontSizeCoefficients: Record<string, number>,
+	defaultFontSizeCoefficient: number,
 ) => {
 	// --- 定数 ---
 	const SPEED_PX_PER_SEC = 400;
@@ -18,16 +17,6 @@ export const injectComment = async (
 	const COMMENT_CLASS = "google-meet-comment-flow";
 	const LANE_ATTR = "data-lane";
 	const MAX_Z_INDEX = "2147483647";
-	// NOTE: キーは shared/settings.ts の FONT_SIZES の values と一致させる
-	const FONT_SIZE_COEFFICIENTS: Record<string, number> = {
-		XS: 0.25,
-		S: 0.5,
-		M: 1,
-		L: 2,
-		XL: 4,
-	};
-	// NOTE: shared/settings.ts の DEFAULT_FONT_SIZE ("L") と一致させる
-	const DEFAULT_FONT_SIZE_COEFFICIENT = FONT_SIZE_COEFFICIENTS.L;
 
 	// --- helpers ---
 	// Google Slide の全画面モードでは最大 z-index の overlay が存在するため、
@@ -40,8 +29,7 @@ export const injectComment = async (
 	};
 
 	const resolveFontSizePx = (screenHeightPx: number, key: string): number => {
-		const coefficient =
-			FONT_SIZE_COEFFICIENTS[key] ?? DEFAULT_FONT_SIZE_COEFFICIENT;
+		const coefficient = fontSizeCoefficients[key] ?? defaultFontSizeCoefficient;
 		return screenHeightPx * BASE_FONT_SIZE_RATIO * coefficient;
 	};
 

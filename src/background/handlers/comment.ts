@@ -1,3 +1,7 @@
+import {
+	DEFAULT_FONT_SIZE,
+	FONT_SIZE_COEFFICIENTS,
+} from "../../shared/settings";
 import { STORAGE_KEYS } from "../../shared/storageKeys";
 import { injectComment } from "../injectComment";
 
@@ -42,6 +46,8 @@ export const flushCommentToActiveTab = async () => {
 			String(comment),
 			String(stored[STORAGE_KEYS.CommentAuthor] ?? ""),
 			Number(stored[STORAGE_KEYS.CommentId] ?? 0),
+			FONT_SIZE_COEFFICIENTS,
+			FONT_SIZE_COEFFICIENTS[DEFAULT_FONT_SIZE],
 		],
 	});
 };
